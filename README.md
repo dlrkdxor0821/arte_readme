@@ -8,6 +8,8 @@
 
 ###  프로젝트 명 : ABA (Arte Book Asistance)
 
+**[ Presentation ](#)** | **[ Demo ](#)**
+
 </div>
 
 ---
@@ -20,14 +22,14 @@
 
 | 구분 | 기술 |
 |------|------|
-| Language | Python, C++ |
-| Framework | ROS2 (Humble) |
-| Robot | 로봇팔 (예: ...), 주행로봇 (AMR) |
-| Simulation | Gazebo, RViz |
-| Database | MySQL / PostgreSQL |
-| GUI | PyQt5 / Web |
-| Communication | TCP/IP, ROS2 DDS |
-| Tools | Git, Docker, Notion |
+| **Language** | ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white) ![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=cplusplus&logoColor=white) |
+| **Framework** | ![ROS2](https://img.shields.io/badge/ROS2_Jazzy-22314E?style=for-the-badge&logo=ros&logoColor=white) |
+| **Robot** | ![Robot Arm](https://img.shields.io/badge/로봇팔-FF6F00?style=for-the-badge&logo=robotframework&logoColor=white) ![AMR](https://img.shields.io/badge/주행로봇_AMR-009688?style=for-the-badge&logo=robotframework&logoColor=white) |
+| **Simulation** | ![Gazebo](https://img.shields.io/badge/Gazebo-FF6600?style=for-the-badge&logo=gazebo&logoColor=white) ![RViz](https://img.shields.io/badge/RViz-22314E?style=for-the-badge&logo=ros&logoColor=white) |
+| **Database** | ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white) |
+| **GUI** | ![PyQt5](https://img.shields.io/badge/PyQt5-41CD52?style=for-the-badge&logo=qt&logoColor=white) ![Web](https://img.shields.io/badge/Web-E34F26?style=for-the-badge&logo=html5&logoColor=white) |
+| **Communication** | ![TCP/IP](https://img.shields.io/badge/TCP/IP-005571?style=for-the-badge&logo=internetcomputer&logoColor=white) ![ROS2 DDS](https://img.shields.io/badge/ROS2_DDS-22314E?style=for-the-badge&logo=ros&logoColor=white) |
+| **Tools** | ![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Notion](https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white) |
 
 ### 📖 프로젝트 시나리오 (Scenario)
 
@@ -178,10 +180,12 @@ arte_readme/
 
 | 이름 | 역할 | 담당 업무 | GitHub |
 |------|------|-----------|--------|
-| 홍길동 | 팀장 | Fleet Management | [@id](https://github.com/) |
-| 홍길동 | 팀원 | 로봇팔 제어 | [@id](https://github.com/) |
-| 홍길동 | 팀원 | 주행로봇 | [@id](https://github.com/) |
-| 홍길동 | 팀원 | GUI / DB | [@id](https://github.com/) |
+| 이강택 | 팀장 | ... | [@id](https://github.com/) |
+| 인경일 | 팀원 | ... | [@id](https://github.com/) |
+| 정호재 | 팀원 | ... | [@id](https://github.com/) |
+| 이형주 | 팀원 | ... | [@id](https://github.com/) |
+| 이주형 | 팀원 | ... | [@id](https://github.com/) |
+| 이세형 | 팀원 | ... | [@id](https://github.com/) |
 
 ---
 
