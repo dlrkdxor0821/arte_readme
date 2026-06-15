@@ -4,7 +4,7 @@
 
 <div align="center">
 
-<img src="image/Arte_logo2.png" alt="Arte Logo" width="300"/>
+<img src="image/Arte_logo2.png" alt="Arte Logo" width="1440"/>
 
 ###  프로젝트 명 : ABA (Arte Book Asistance)
 
@@ -114,6 +114,14 @@ arte_readme/
 
 ---
 
+## 🗄 ERD
+
+> 데이터베이스 구조(ERD)를 추가해주세요.
+
+<img src="docs/img/erd.png" alt="ERD" width="700"/>
+
+---
+
 ## 🔌 Interface Specification
 
 > 노드/모듈 간 통신 인터페이스(Topic, Service, Action, API)를 정리해주세요.
@@ -123,14 +131,6 @@ arte_readme/
 | `/robot/goal` | Topic | GUI → Robot | 목적지 전달 |
 | `/robot/status` | Topic | Robot → Fleet | 로봇 상태 보고 |
 | ... | ... | ... | ... |
-
----
-
-## 🗄 ERD
-
-> 데이터베이스 구조(ERD)를 추가해주세요.
-
-<img src="docs/img/erd.png" alt="ERD" width="700"/>
 
 ---
 
@@ -202,11 +202,3 @@ arte_readme/
 | 이형주 | 팀원 | ... | [@id](https://github.com/) |
 | 이주형 | 팀원 | ... | [@id](https://github.com/) |
 | 이세형 | 팀원 | ... | [@id](https://github.com/) |
-
----
-
-<div align="center">
-
-Made by **`팀 이름`**
-
-</div>
