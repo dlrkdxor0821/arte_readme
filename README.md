@@ -1,17 +1,12 @@
 # Team Arte
 
----
+
 
 <div align="center">
 
 <img src="image/Arte_logo2.png" alt="Arte Logo" width="300"/>
 
 ###  프로젝트 명 : ABA (Arte Book Asistance)
-
-<!-- 배지 예시 (선택) -->
-![ROS2](https://img.shields.io/badge/ROS2-Humble-blue)
-![Python](https://img.shields.io/badge/Python-3.10-green)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 </div>
 
