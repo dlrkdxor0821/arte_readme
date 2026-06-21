@@ -127,3 +127,154 @@ ROS2 패키지 (C++ fleet, Python tasks)  →  package.xml + rosdep + colcon
 5. **실물 이관** — 시뮬 노드만 교체, RMF/nav graph/태스크 재사용
 
 > 가장 큰 함정은 5장의 2가지. 이것만 초반에 설계로 정리하면 나머지는 rmf_demos 패턴을 따라가면 된다.
+
+---
+
+## 7. Labi Bot — AI 챗봇 서브시스템 & Docker 구성
+
+도서관 AI 가이드 챗봇. **경량 RAG**(정규식 의도 판별 + MariaDB LIKE 검색 + 로컬 LLM 프롬프트 주입)로, 임베딩/벡터DB/Elasticsearch 없이 구현. ROS 로봇과 분리된 AI Service 서브시스템.
+
+처리 흐름:
+```
+자연어/음성 입력 → 의도 판별(정규식) → 후보 도서 검색(MariaDB LIKE)
+→ 컨텍스트 생성 → 로컬 LLM(Ollama) 주입 → 스트리밍 응답 → 도서 카드/서가 위치
+```
+
+### 7-1. Docker 구성 — 4 서비스 (DB 1개)
+
+| 서비스 | 역할 | 비고 |
+|---|---|---|
+| `mariadb` | 데이터 (books + robot_logs) | DB 1개에 테이블만 분리 |
+| `ollama` | 로컬 LLM (qwen3:1.7b) | 모델 볼륨 보존, 유동 교체 |
+| `backend` | FastAPI (도서/관리 API + STT WS, 8010) | nginx 만 접근 |
+| `nginx` | React SPA 서빙 + `/api`·`/ollama` 프록시 | **개발 중엔 생략 가능** |
+
+> 배포: 4개 / 개발: `mariadb`+`ollama`+`backend` 3개 + 프론트 dev 서버. (DB 관리 UI(adminer)는 불필요 → 미포함)
+
+```yaml
+# service/labi_bot/docker-compose.yml
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: labi-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: labi
+      MARIADB_USER: labi
+      MARIADB_PASSWORD: labi
+      MARIADB_ROOT_PASSWORD: change-me
+    ports: ["3306:3306"]
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro   # 최초 1회 스키마/시드 자동 실행
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: labi-ollama
+    restart: unless-stopped
+    ports: ["11434:11434"]
+    volumes:
+      - ollama_models:/root/.ollama        # 받은 모델 보존
+    # GPU(NVIDIA) 시 주석 해제 (qwen3:1.7b 는 CPU 도 가능)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+  backend:
+    build: ./service/backend
+    container_name: labi-backend
+    restart: unless-stopped
+    depends_on:
+      mariadb: { condition: service_healthy }
+      ollama:  { condition: service_started }
+    environment:
+      DATABASE_URL: mysql+asyncmy://labi:labi@mariadb:3306/labi
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen3:1.7b             # 모델 교체는 이 값만 변경
+    expose: ["8010"]                       # 외부 직노출 X
+
+  nginx:
+    image: nginx:alpine
+    container_name: labi-nginx
+    restart: unless-stopped
+    depends_on: [backend, ollama]
+    ports: ["80:80"]
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx/labi.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  mariadb_data:
+  ollama_models:
+```
+
+> Ollama 모델 최초 1회: `docker exec -it labi-ollama ollama pull qwen3:1.7b`
+
+### 7-2. 폴더 구성 (한 세트)
+
+```
+service/labi_bot/
+├── docker-compose.yml          # 오케스트레이션
+├── nginx/labi.conf             # 웹 라우팅 (nginx 마운트)
+├── db/init/01_schema.sql       # DB 테이블 (mariadb 최초 기동 시 자동 실행)
+├── service/backend/            # FastAPI Dockerfile + 코드
+└── frontend/dist/              # 빌드된 React SPA
+```
+
+### 7-3. nginx 라우팅 (스트리밍 대응)
+
+```nginx
+server {
+  listen 80;
+  location / { root /usr/share/nginx/html; try_files $uri /index.html; }   # SPA
+  location /api/ { proxy_pass http://backend:8010; }
+  location /api/speech/ws {                       # 음성 STT WebSocket
+    proxy_pass http://backend:8010;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+  }
+  location /ollama/ {                              # LLM 스트리밍
+    proxy_pass http://ollama:11434/;
+    proxy_buffering off;                           # 토큰 즉시 전달
+    proxy_read_timeout 600s;                       # 장시간 생성 대응
+  }
+}
+```
+
+### 7-4. DB 스키마 (books + robot_logs, 같은 DB)
+
+```sql
+-- 도서: 정보 + 위치 + 재고 (LIKE 검색 + LLM 컨텍스트 주입 대상)
+CREATE TABLE books (
+  id          INT PRIMARY KEY AUTO_INCREMENT,
+  title       VARCHAR(255), author VARCHAR(255),
+  summary     TEXT, category VARCHAR(50),
+  for_whom_kr VARCHAR(255),
+  location    VARCHAR(20),          -- 서가 위치 (예: A-03-02)
+  stock       INT DEFAULT 0,        -- 재고 (보유 우선 정렬)
+  lang        VARCHAR(10),
+  FULLTEXT idx_search (title, author, summary, for_whom_kr)
+);
+
+-- 로봇 작업 로그 = rosout 저장 (rcl_interfaces/msg/Log 매핑)
+CREATE TABLE robot_logs (
+  id        BIGINT PRIMARY KEY AUTO_INCREMENT,
+  ts        DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),  -- stamp (ms)
+  level     VARCHAR(10),     -- DEBUG/INFO/WARN/ERROR/FATAL
+  node      VARCHAR(120),    -- rosout name
+  msg       TEXT,            -- rosout msg
+  task_id   VARCHAR(50),     -- 작업(배달/수거) 추적 (선택)
+  robot_id  VARCHAR(50),     -- 로봇 식별 (선택)
+  INDEX idx_ts (ts), INDEX idx_level (level)
+);
+```
+
+- `robot_logs`: 작은 **로그 싱크 노드**가 `/rosout` 구독 → INSERT. rosbag 대신 DB 영구 저장으로 웹 조회 가능.
+- 로그량 많으면 `level >= WARN` 만 저장하거나 오래된 로그 주기 삭제 고려.
