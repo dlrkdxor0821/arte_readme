@@ -33,61 +33,69 @@
 
 ## 3. 폴더 구조 (Scaffold)
 
-README 컨벤션(`fleet_management / robot_arm / mobile_robot / gui`)을 따르되 패키지 단위로 상세화.
+**pingdergarten 컨벤션**을 따른다 — 단일 `src/` 안에 욱여넣지 않고 **최상위에 기능별 폴더**를 두며,
+ROS2 코드만 `controller/`·`fleet/` 의 **독립 colcon 워크스페이스(`src/`)** 에, 비-ROS(service·app·web·db)는 ROS 바깥에 둔다.
 
 ```
-ABA/                              # monorepo 루트
-├── src/
-│   ├── mobile_robot/             # [Equipment] 주행 온보드 ROS2
-│   │   └── libi_drive/           #   nav2 스택
-│   ├── robot_arm/                # [Equipment] 팔 온보드 ROS2
-│   │   └── libi_handy/           #   MoveIt 등
-│   │
-│   ├── fleet_management/         # ★ RMF 관제 (robot 컨트롤러와 분리)
-│   │   └── libi_rmf/
-│   │       ├── libi_rmf_maps/            building.yaml → world/nav graph   (ament_cmake)
-│   │       ├── libi_rmf_fleet_adapter/   RMF↔nav2 통역  ★핵심             (ament_cmake / C++)
-│   │       ├── libi_rmf_bridge/          domain_bridge 설정                (ament_cmake)
-│   │       ├── libi_rmf_tasks/           태스크 + 팔 perform_action 훅      (ament_python)
-│   │       └── libi_rmf_bringup/         launch 조립                       (ament_cmake)
-│   │
-│   ├── service/                  # [Server] 백엔드
-│   │   ├── libi_service/         #   ROS2 ↔ 로봇
-│   │   ├── aba_service/          #   웹 백엔드(클라이언트)
-│   │   └── ai_service/           #   AI(비전, UDP 수신)
-│   │
-│   └── gui/                      # [Client] UI
-│       ├── libi_gui/             #   PyQt (Drive Board 탑재)
-│       ├── library_member/       #   웹 (회원)
-│       └── librarian/            #   웹 (사서)
+ABA/                                          # monorepo 루트 (pingdergarten 컨벤션)
 │
-├── docs/                         # 문서/이미지/다이어그램
-├── scripts/                      # 빌드/운영/테스트
-├── db/                           # ABA DB 스키마/마이그레이션
+├── controller/                               # [Equipment] 로봇 온보드 ROS2 — 보드별 colcon ws
+│   ├── libi-drive-controller/                #   주행 보드 (Drive Board)
+│   │   └── src/libi_drive/                   #     nav2 스택
+│   └── libi-handy-controller/                #   팔 보드 (Handy Board)
+│       └── src/libi_handy/                   #     MoveIt 등
+│
+├── fleet/                                    # ★ RMF 관제 (컨트롤러와 분리) — colcon ws
+│   └── src/
+│       ├── libi_rmf_maps/                    #   building.yaml → world/nav graph   (ament_cmake)
+│       ├── libi_rmf_fleet_adapter/           #   RMF↔nav2 통역  ★핵심             (ament_cmake / C++)
+│       ├── libi_rmf_bridge/                  #   domain_bridge 설정                (ament_cmake)
+│       ├── libi_rmf_tasks/                   #   태스크 + 팔 perform_action 훅      (ament_python)
+│       └── libi_rmf_bringup/                 #   launch 조립                       (ament_cmake)
+│
+├── service/                                  # [Server] 비-ROS 백엔드 (ROS 바깥)
+│   ├── libi_service/                         #   ROS2 ↔ 로봇
+│   ├── aba_service/                          #   웹 백엔드(클라이언트)
+│   ├── ai_service/                           #   AI(비전, UDP 수신)
+│   └── labi_bot/                             #   AI 챗봇 (자체 docker-compose, §7)
+│
+├── app/                                      # [Client] 데스크톱
+│   └── libi_gui/                             #   PyQt (Drive Board 탑재)
+│
+├── web/                                      # [Client] 웹
+│   ├── library_member/                       #   회원
+│   └── librarian/                            #   사서
+│
+├── docs/                                     # 문서/이미지/다이어그램
+├── scripts/                                  # 빌드/운영/테스트
+├── db/                                       # ABA DB 스키마/마이그레이션
 ├── tests/
-├── pyproject.toml                # 비-ROS Python 의존성 (extras 그룹)
+├── pyproject.toml                            # 비-ROS Python 의존성 (extras 그룹)
 └── docker-compose.yml
 ```
+
+> **colcon 워크스페이스 3개**: `controller/libi-drive-controller`·`controller/libi-handy-controller`·`fleet/`.
+> 각 ws 안에서 `source /opt/ros/jazzy/setup.bash && colcon build`. 비-ROS(service/app/web)는 colcon이 안 건드림 → 루트 `pyproject.toml`.
 
 ---
 
 ## 4. 핵심 설계 결정
 
-### 4-1. RMF 는 `fleet_management` 에 (컨트롤러와 분리)
-- `mobile_robot/`·`robot_arm/` = **로봇 보드 온보드 제어** (로봇 위에서 실행)
-- `fleet_management/libi_rmf` = **로봇들을 지휘하는 오케스트레이션** (서버/코디네이터에서 실행)
-- 성격이 다르므로 분리. RMF 는 `mobile_robot`/`robot_arm` 에 **코드 의존하지 않고 ROS2 토픽/액션으로만** 통신 → 컨트롤러들이 RMF 없이도 단독 동작.
+### 4-1. RMF 는 `fleet/` 에 (컨트롤러와 분리)
+- `controller/` (`libi-drive-controller`·`libi-handy-controller`) = **로봇 보드 온보드 제어** (로봇 위에서 실행)
+- `fleet/` (`libi_rmf_*`) = **로봇들을 지휘하는 오케스트레이션** (서버/코디네이터에서 실행)
+- 성격이 다르므로 분리. RMF 는 `controller/` 에 **코드 의존하지 않고 ROS2 토픽/액션으로만** 통신 → 컨트롤러들이 RMF 없이도 단독 동작.
 - RMF 가 직접 지휘하는 건 **주행(libi_drive)**. 팔은 태스크 도착 후 **`perform_action`** 으로 트리거.
 
 ### 4-2. 언어 — fleet 는 C++, 나머지는 자유 (혼합 OK)
 - RMF fleet adapter 는 **C++ EasyFullControl** 사용 (`rmf_fleet_adapter/agv/EasyFullControl.hpp` + `librmf_fleet_adapter.so`). Python 은 이 C++ 의 바인딩이라, C++ 가 "원본".
-- 워크스페이스 레벨 혼합 OK: `fleet`=C++, `tasks`/`service`/`gui`=Python. ROS2 로 통신하므로 무관.
+- 워크스페이스 레벨 혼합 OK: `fleet`=C++(fleet_adapter)/Python(tasks), `service`/`app`/`web`=Python. ROS2 로 통신하므로 무관.
 - **패키지 1개 = 빌드타입 1개** 유지 (ament_cmake=C++, ament_python=Python).
 
 ### 4-3. 의존성 관리 — pyproject.toml + ROS 분리 (2층)
 ```
 ROS2 패키지 (C++ fleet, Python tasks)  →  package.xml + rosdep + colcon
-비-ROS Python (service/gui/scripts)     →  루트 pyproject.toml (+ extras)
+비-ROS Python (service/app/web/scripts) →  루트 pyproject.toml (+ extras)
 ```
 - `pyproject.toml` 권장 (requirements.txt 단독 ❌). 배포 대상별 extras 로 그룹화:
   ```toml

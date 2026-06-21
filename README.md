@@ -71,16 +71,18 @@
 ## 📂 Folder Structure
 
 ```
-arte_readme/
+arte_readme/                         # pingdergarten 컨벤션
 ├── README.md
-├── docs/                  # 문서, 이미지, 다이어그램
+├── docs/                            # 문서, 이미지, 다이어그램
 │   └── img/
-├── src/                   # 소스 코드
-│   ├── fleet_management/  # 관제 시스템
-│   ├── robot_arm/         # 로봇팔 제어
-│   ├── mobile_robot/      # 주행로봇 제어
-│   └── gui/               # GUI
-└── ...
+├── controller/                      # 로봇 온보드 ROS2 (보드별 colcon ws)
+│   ├── libi-drive-controller/       #   주행 (nav2)
+│   └── libi-handy-controller/       #   팔 (MoveIt)
+├── fleet/                           # ★ RMF 관제 (colcon ws) — fleet/src/libi_rmf_*
+├── service/                         # 비-ROS 백엔드 (libi_service/aba_service/ai_service/labi_bot)
+├── app/                             # PyQt 데스크톱 (libi_gui)
+├── web/                             # 웹 (library_member/librarian)
+└── db/  scripts/  tests/
 ```
 
 ---
