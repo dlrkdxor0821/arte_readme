@@ -93,6 +93,38 @@ arte_readme/                         # pingdergarten 컨벤션
 
 <img src="docs/img/system_architecture.png" alt="System Architecture" width="700"/>
 
+### 3계층 구성
+
+```
+[Client]    회원 / 사서 브라우저, 관리자 PyQt        ──HTTP──┐
+[Server]    aba_service + ABA DB / libi_service / ai_service
+              │ ROS2(DDS)                            │ UDP(Image→AI)
+[Equipment] Libi Drive Board (주행)  ──DDS──  Libi Handy Board (팔)
+```
+
+### 서버 역할 — ⚠️ `aba_service`는 "웹 백엔드"이지 로봇 controller가 아니다
+
+| 서버 | 역할 | 통신 | 로봇 지휘? |
+|---|---|---|---|
+| **`aba_service`** | 웹/애플리케이션 백엔드 — 회원·사서 요청, 도서관 업무 로직, ABA DB | Client ↔ HTTP | ❌ 클라이언트 정문 |
+| **`libi_service`** | ROS2 ↔ 로봇 브리지 — 로봇 명령 전달·상태 수신 | 로봇 ↔ ROS2/DDS | △ 로봇 연동 |
+| **`ai_service`** | 비전 AI (UDP 이미지 수신) | UDP | ❌ |
+| **RMF (`fleet/`)** | **이동 지휘자** — 다중로봇 교통·태스크 오케스트레이션 | ROS2 | ✅ 실제 지휘 |
+
+- **로봇을 실제로 지휘하는 두뇌**는 `aba_service`가 아니라 **`libi_service` + RMF(`fleet/`)** 다.
+  RMF은 *libi_service와 로봇 컨트롤러 사이의 "이동 지휘자"* (서버/코디네이터에서 실행, ROS2로 `libi_drive`에 명령).
+- `aba_service`는 **클라이언트(웹)가 들어오는 정문**일 뿐, 로봇 제어는 아래로 위임한다.
+
+**명령 흐름**
+
+```
+Client(웹) ──HTTP──> aba_service ──> libi_service ──> RMF(fleet) ──ROS2──> libi_drive(주행)
+                     (웹 로직)       (ROS2 브리지)    (이동 지휘자)        팔은 perform_action → libi_handy
+```
+
+> 참고: pingdergarten은 `control-service` 하나가 웹+ROS 브리지를 겸했지만,
+> ABA는 이를 `aba_service`(웹) + `libi_service`(ROS)로 분리하고 그 위에 RMF를 얹는다.
+
 ---
 
 ## 🚦 Fleet Management System
